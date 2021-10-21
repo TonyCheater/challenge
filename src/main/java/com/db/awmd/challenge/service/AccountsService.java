@@ -23,7 +23,7 @@ public class AccountsService {
 
     private final NotificationService notificationService;
 
-    private final Map<String, Object> map = new ConcurrentHashMap<>();
+    private final Map<String, Object> processingAccountIds = new ConcurrentHashMap<>();
 
     @Autowired
     public AccountsService(AccountsRepository accountsRepository, NotificationService notificationService) {
@@ -56,6 +56,7 @@ public class AccountsService {
 
             notificate(accountFrom, accountTo, accountMoneyTransferDto.getAmount());
         } catch (Exception exception) {
+            deleteInProgressAccounts(accountMoneyTransferDto);
             String message = String.format("error transferMoney with info =%s", accountMoneyTransferDto);
             log.error(message, accountMoneyTransferDto);
             throw new TransferMoneyAccountException(message, exception);
@@ -63,18 +64,18 @@ public class AccountsService {
     }
 
     private void deleteInProgressAccounts(AccountMoneyTransferDto accountMoneyTransferDto) {
-        map.remove(accountMoneyTransferDto.getAccountFromId());
-        map.remove(accountMoneyTransferDto.getAccountToId());
+        processingAccountIds.remove(accountMoneyTransferDto.getAccountFromId());
+        processingAccountIds.remove(accountMoneyTransferDto.getAccountToId());
     }
 
     private void saveInprogressAccounts(AccountMoneyTransferDto accountMoneyTransferDto) {
-        map.put(accountMoneyTransferDto.getAccountFromId(), "");
-        map.put(accountMoneyTransferDto.getAccountToId(), "");
+        processingAccountIds.put(accountMoneyTransferDto.getAccountFromId(), "");
+        processingAccountIds.put(accountMoneyTransferDto.getAccountToId(), "");
     }
 
     private boolean transferBetweenAccountsAreInProgress(AccountMoneyTransferDto accountMoneyTransferDto) {
-        return map.containsKey(accountMoneyTransferDto.getAccountFromId())
-                || map.containsKey(accountMoneyTransferDto.getAccountToId());
+        return processingAccountIds.containsKey(accountMoneyTransferDto.getAccountFromId())
+                || processingAccountIds.containsKey(accountMoneyTransferDto.getAccountToId());
     }
 
     private void notificate(Account accountFrom, Account accountTo, BigDecimal amount) {
